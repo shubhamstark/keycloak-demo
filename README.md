@@ -7,18 +7,19 @@ those pieces is a real process you can watch here.
 
 ## What is in the box
 
-Four services, deployed to a local Kubernetes cluster (minikube), plus Keycloak
+Five services, deployed to a local Kubernetes cluster (minikube), plus Keycloak
 and its Postgres database.
 
 | Component | Role in OAuth / OIDC terms | What it demonstrates |
 |---|---|---|
 | `keycloak` | Authorization server + OIDC provider | Issues and signs tokens, hosts the login page |
 | `postgres` | Keycloak's durable state | Realms, users, clients, keys, sessions |
-| `login-web` | Public client (SPA) | Authorization code + PKCE, reads the ID token |
+| `login-web` | Public client (SPA) | Authorization code + PKCE, session-based SSO |
+| `login-mobile` | Public client (mobile simulation) | PKCE + refresh rotation + localStorage persistence |
 | `music-service` | Resource server, and a client | Validates access tokens via JWKS; calls other services |
 | `recommendation-service` | Resource server | Only accepts tokens minted for it (audience check) |
 
-## The two things it proves
+## The three things it proves
 
 1. User-to-service auth. The browser logs in through `login-web` using
    authorization code + PKCE, then calls `music-service` with the resulting
@@ -33,7 +34,29 @@ and its Postgres database.
      `recommendation-service`, so the downstream call still carries the user's
      identity.
 
-See `docs/AUTH-FLOWS.md` for the step-by-step of all three flows.
+3. Mobile token-based auth. `login-mobile` demonstrates the patterns that native
+   apps use: tokens persisted to `localStorage` (simulating OS keychains),
+   refresh token rotation, and no server-side sessions. Open
+   **http://app.demo.local/mobile** to see it. Compare `login-web/app.js` and
+   `login-mobile/app.js` side by side — same OAuth, different persistence.
+
+See `docs/AUTH-FLOWS.md` for the step-by-step of all four flows, and
+`docs/MOBILE.md` for the web vs mobile comparison.
+
+## Branches: web vs mobile
+
+This branch (`mobile`) includes both `login-web` and `login-mobile`.
+The `web` branch keeps only the session-based SPA. Switch between them:
+
+```bash
+git checkout web    # SPA + sessions only
+git checkout mobile # SPA + mobile token-based demo
+```
+
+| Branch | Client | Token handling | Refresh | Sessions |
+|---|---|---|---|---|
+| [web](https://github.com/shubhamstark/keycloak-demo/tree/web) | `login-web` (SPA) | In-memory only | None | Keycloak SSO cookie |
+| [mobile](https://github.com/shubhamstark/keycloak-demo/tree/mobile) | both | localStorage (mobile) | Rotating | None on mobile |
 
 ## Quick start
 
@@ -72,9 +95,10 @@ See `docs/RUNNING.md` for the full walkthrough with troubleshooting.
 k8s/                     raw Kubernetes manifests, one file per component
 keycloak/                realm export (clients, scopes, users) + notes
 login-web/               the SPA public client (plain HTML/JS)
+login-mobile/            mobile auth demo (phone-styled, PKCE + refresh + localStorage)
 music-service/           Go resource server that also calls downstream services
 recommendation-service/  Go resource server, downstream target
-docs/                    architecture, auth flows, running guide
+docs/                    architecture, auth flows, mobile guide, running guide
 ```
 
 Each folder has its own README. Start with `docs/RUNNING.md` to bring it up, then

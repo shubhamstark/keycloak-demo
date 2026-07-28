@@ -1,6 +1,6 @@
 # Auth flows
 
-This is the canonical, on-the-wire description of the three flows the demo shows.
+This is the canonical, on-the-wire description of the four flows the demo shows.
 Keep it in sync with the code (see `CLAUDE.md`).
 
 ## Flow 1: user-to-service (authorization code + PKCE)
@@ -63,6 +63,37 @@ Same downstream call, but now `music-service` acts on behalf of the user.
 
 Use this when the downstream service needs the user's identity. The token says
 "music-service, acting for user X."
+
+## Flow 4: mobile (PKCE + refresh + localStorage)
+
+The same authorization code + PKCE flow as Flow 1, but optimized for a native
+app that has no browser session to lean on.
+
+1. On first launch, `login-mobile` shows "not logged in". The user taps "Log in".
+2. Same PKCE + redirect dance as Flow 1, but `scope=openid profile email
+   music-audience offline_access`. The `offline_access` scope tells Keycloak
+   to return a long-lived `refresh_token`.
+3. After token exchange, `login-mobile` writes `{access_token, id_token,
+   refresh_token}` to `localStorage`. The tokens survive page reloads.
+4. On subsequent launches, `login-mobile` reads tokens from `localStorage`.
+   If the access token is still valid, the user is shown as logged in —
+   no network call, no Keycloak redirect.
+5. If the access token has expired, `login-mobile` silently POSTs
+   `grant_type=refresh_token` with the stored refresh token. Keycloak returns
+   a new access token AND a new refresh token. The old refresh token is
+   invalidated server-side. The new pair is stored in `localStorage`.
+6. All API calls to `music-service` use `Authorization: Bearer <access_token>`,
+   identical to Flow 1. If the access token expired, step 5 runs first.
+
+**Replay detection**: if a leaked refresh token is reused, Keycloak sees that
+it was already consumed, and invalidates the entire grant. Both the attacker's
+and the legitimate client's tokens stop working, forcing a full re-auth.
+
+**No SSO**: the `AUTH_SESSION_ID` cookie is never set. Each app instance
+manages its own tokens independently. There is no shared session to log out
+of — "Forget tokens" simply deletes localStorage.
+
+See `docs/MOBILE.md` for the full comparison between web and mobile auth.
 
 ## The one-line contrast
 

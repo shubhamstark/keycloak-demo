@@ -1,0 +1,35 @@
+# login-mobile: mobile-auth demo (token-based, no sessions).
+# Served at app.demo.local/mobile — same host as login-web, different path.
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-mobile
+  namespace: keycloak-demo
+spec:
+  selector: { app: login-mobile }
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: login-mobile
+  namespace: keycloak-demo
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: login-mobile } }
+  template:
+    metadata:
+      labels: { app: login-mobile }
+    spec:
+      containers:
+        - name: login-mobile
+          image: login-mobile:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 2
+            periodSeconds: 10

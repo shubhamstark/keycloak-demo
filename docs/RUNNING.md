@@ -65,13 +65,17 @@ You should eventually see `keycloak`, `postgres`, `music-service`,
 
 ## 6. Use it
 
-- Open `http://app.demo.local` (the SPA).
+- Open `http://app.demo.local` (the SPA — session-based web auth).
 - Click "Log in", authenticate as `shubham` / `password`.
 - You should see the ID token claims render ("who am I").
 - Click "Call music-service" to see the user's favourites (user-to-service).
 - Click "+ recommendations (client credentials)" and
   "+ recommendations (token exchange)" to trigger the two service-to-service
   patterns.
+- Open `http://app.demo.local/mobile` (the phone-styled mobile demo — token-based,
+  no sessions). Log in, then reload the page: tokens survive in `localStorage`.
+  Click "Refresh token" to see refresh rotation. Click "Forget tokens" to
+  clear. Compare with the SPA: same OAuth, different persistence.
 
 Watch the downstream identity change:
 

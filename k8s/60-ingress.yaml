@@ -20,6 +20,9 @@ spec:
     - host: app.demo.local
       http:
         paths:
+          - path: /mobile
+            pathType: Prefix
+            backend: { service: { name: login-mobile, port: { number: 80 } } }
           - path: /
             pathType: Prefix
             backend: { service: { name: login-web, port: { number: 80 } } }

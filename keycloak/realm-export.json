@@ -31,6 +31,33 @@
       "optionalClientScopes": []
     },
     {
+      "clientId": "login-mobile",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://app.demo.local/mobile/*"
+      ],
+      "webOrigins": [
+        "http://app.demo.local"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://app.demo.local/mobile/*",
+        "use.refresh.tokens": "true",
+        "client.offline.session.idle.timeout": "86400",
+        "client.offline.session.max.lifespan": "604800"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "music-audience"
+      ],
+      "optionalClientScopes": []
+    },
+    {
       "clientId": "music-service",
       "enabled": true,
       "publicClient": false,

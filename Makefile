@@ -19,7 +19,8 @@ images:
 	eval $$(minikube docker-env) && \
 	docker build -t music-service:demo ./music-service && \
 	docker build -t recommendation-service:demo ./recommendation-service && \
-	docker build -t login-web:demo ./login-web
+	docker build -t login-web:demo ./login-web && \
+	docker build -t login-mobile:demo ./login-mobile
 
 realm:
 	kubectl create namespace $(NS) --dry-run=client -o yaml | kubectl apply -f -

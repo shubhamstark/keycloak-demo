@@ -64,6 +64,24 @@ identity (`sub = shubham`), and `recommendation-service` logs who the call
 is for. This is Standard Token Exchange V2 (RFC 8693), enabled by default
 in Keycloak 26.2+.
 
+### 4. Mobile (PKCE + refresh + localStorage)
+
+`login-mobile` runs the same authorization code + PKCE flow as the SPA, but
+with three differences that matter for native apps:
+
+- **Persistent tokens**: access and refresh tokens are stored in `localStorage`
+  (simulating iOS Keychain / Android Keystore). They survive page reloads.
+- **Refresh rotation**: when the access token expires, a silent refresh call
+  gets a new one. The old refresh token is invalidated server-side — the next
+  refresh must use the new token. If a stale refresh token is reused, Keycloak
+  detects it and revokes the entire grant.
+- **No server-side session**: the `AUTH_SESSION_ID` cookie is never set.
+  "Logout" deletes local tokens. There is no SSO and no `end_session_endpoint`
+  redirect.
+
+See `docs/MOBILE.md` for the full comparison between the web and mobile
+approaches.
+
 ## SSO and session management
 
 After a successful login, Keycloak sets an `AUTH_SESSION_ID` cookie scoped to
@@ -109,7 +127,8 @@ included even without being explicitly requested. The SPA also requests
 
 | Pattern | Token subject | Caller identity downstream |
 |---|---|---|
-| User calls music-service | User (`shubham`) | User authenticated at `login-web` |
+| User calls music-service (web) | User (`shubham`) | User authenticated at `login-web` |
+| User calls music-service (mobile) | User (`shubham`) | User authenticated at `login-mobile` (no session, token from refresh) |
 | music-service → recs (client credentials) | Service account | `music-service` acting as itself |
 | music-service → recs (token exchange) | User (`shubham`) | `music-service` on behalf of `shubham` |
 

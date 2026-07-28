@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keycloak demo: mobile</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #e8e8ed;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    /* Phone frame */
+    .phone {
+      width: 375px;
+      max-width: 100vw;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+      min-height: 700px;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Status bar */
+    .status-bar {
+      background: #1c1c1e;
+      color: #fff;
+      padding: 12px 20px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-bar .time { font-weight: 600; }
+    .status-bar .icons { opacity: 0.7; }
+    /* Header */
+    .header {
+      background: #f9f9fb;
+      padding: 20px;
+      border-bottom: 1px solid #e0e0e6;
+    }
+    .header h1 { font-size: 18px; color: #1c1c1e; }
+    .header .sub { font-size: 12px; color: #888; margin-top: 4px; }
+    /* Auth status */
+    .auth-status {
+      padding: 12px 20px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .auth-status .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ccc;
+    }
+    .auth-status.logged-in .dot { background: #34c759; }
+    .auth-status .text { color: #666; }
+    /* Content */
+    .content { padding: 16px 20px; flex: 1; overflow-y: auto; }
+    /* Buttons */
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    button {
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #d1d1d6;
+      cursor: pointer;
+      background: #fff;
+      color: #007aff;
+      font-weight: 500;
+      position: relative;
+      flex: 1;
+      min-width: 100px;
+    }
+    button.primary { background: #007aff; color: #fff; border-color: #007aff; }
+    button.danger  { color: #ff3b30; border-color: #ff3b30; }
+    button:active { opacity: 0.7; }
+    button.loading { color: transparent; pointer-events: none; opacity: 0.6; }
+    button.loading::after {
+      content: "";
+      position: absolute; inset: 0; margin: auto;
+      width: 14px; height: 14px;
+      border: 2px solid #007aff; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Cards */
+    .card {
+      background: #f9f9fb;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      border: 1px solid #e8e8ed;
+    }
+    .card h3 { font-size: 13px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card pre {
+      font-size: 11px;
+      color: #1c1c1e;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.4;
+      max-height: 180px;
+      overflow-y: auto;
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e6;
+    }
+    .card .expiry { font-size: 12px; color: #ff9500; margin-top: 6px; }
+    .card .expiry.ok { color: #34c759; }
+    /* Footer hint */
+    .footer {
+      padding: 12px 20px;
+      border-top: 1px solid #e0e0e6;
+      font-size: 11px;
+      color: #aaa;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="phone">
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <span class="icons">&#x1F4F6; &#x1F50B; &#x1F50A;</span>
+  </div>
+  <div class="header">
+    <h1>Keycloak Mobile</h1>
+    <div class="sub">Token-based auth &bull; Refresh rotation &bull; No sessions</div>
+  </div>
+  <div class="auth-status" id="auth-status">
+    <span class="dot"></span>
+    <span class="text">not logged in</span>
+  </div>
+  <div class="content">
+    <div class="btn-row">
+      <button id="btn-login" class="primary" onclick="doLogin().catch(showError)">Log in</button>
+      <button id="btn-refresh" onclick="doRefresh().catch(showError)" disabled>Refresh token</button>
+    </div>
+    <div class="btn-row">
+      <button id="btn-call" onclick="doCallMusic().catch(showError)" disabled>Call music-service</button>
+    </div>
+    <div class="btn-row">
+      <button id="btn-forget" class="danger" onclick="doForget()" disabled>Forget tokens</button>
+    </div>
+
+    <div class="card">
+      <h3>User</h3>
+      <pre id="whoami">not logged in</pre>
+    </div>
+    <div class="card">
+      <h3>Access token</h3>
+      <div class="expiry" id="token-expiry"></div>
+      <pre id="accesstoken">-</pre>
+    </div>
+    <div class="card">
+      <h3>Refresh token</h3>
+      <pre id="refreshtoken">-</pre>
+    </div>
+    <div class="card">
+      <h3>music-service response</h3>
+      <pre id="apiout">-</pre>
+    </div>
+  </div>
+  <div class="footer">
+    Tokens stored in localStorage &bull; Refresh token rotation &bull; No server-side sessions
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

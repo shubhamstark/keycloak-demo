@@ -101,6 +101,7 @@ async function discover() {
 // endpoint. This is the front channel.
 // ---------------------------------------------------------------------------
 async function login() {
+  setLoading("btn-login", true);
   console.log("login: starting discovery...");
   const meta = await discover();
   console.log("login: discovery ok, building auth URL...");
@@ -188,6 +189,11 @@ async function handleRedirect() {
 // ---------------------------------------------------------------------------
 async function callMusic(query = "") {
   if (!tokens) { setText("apiout", "log in first"); return; }
+  // Show spinner on the clicked button, plus the main Call button.
+  var which = query.includes("client_credentials") ? "btn-call-cc" :
+              query.includes("token_exchange") ? "btn-call-tx" : "btn-call";
+  setLoading(which, true);
+  setLoading("btn-call", true);
   console.log("callMusic: access_token type:", typeof tokens.access_token);
   console.log("callMusic: access_token first 50 chars:", tokens.access_token?.substring(0, 50));
   const res = await fetch(`${cfg.musicServiceUrl}/favourites${query}`, {
@@ -195,6 +201,8 @@ async function callMusic(query = "") {
   });
   const text = await res.text();
   setText("apiout", `HTTP ${res.status}\n\n${pretty(text)}`);
+  setLoading(which, false);
+  setLoading("btn-call", false);
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +225,14 @@ function pretty(text) {
 
 function setText(id, text) { document.getElementById(id).textContent = text; }
 
+// Show/hide a spinner on a button during async work.
+function setLoading(id, loading) {
+  var btn = document.getElementById(id);
+  if (!btn) return;
+  if (loading) { btn.classList.add("loading"); btn.disabled = true; }
+  else         { btn.classList.remove("loading"); btn.disabled = false; }
+}
+
 function logout() {
   tokens = null;
   setText("whoami", "not logged in");
@@ -235,9 +251,13 @@ document.getElementById("btn-call-tx").addEventListener("click",
 
 function showErr(e) {
   console.error(e);
-  const msg = "error: " + (e.message || e);
+  var msg = "error: " + (e.message || e);
   setText("apiout", msg);
   setText("idclaims", msg);
+  setLoading("btn-login", false);
+  setLoading("btn-call", false);
+  setLoading("btn-call-cc", false);
+  setLoading("btn-call-tx", false);
 }
 
 // Expose for inline onclick handlers (button IDs would shadow function names).

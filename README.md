@@ -37,14 +37,34 @@ See `docs/AUTH-FLOWS.md` for the step-by-step of all three flows.
 
 ## Quick start
 
-Prerequisites: `minikube`, `kubectl`, and `docker`. See `docs/RUNNING.md` for the
-full walkthrough. The short version:
+Prerequisites: `minikube`, `kubectl`, `docker`, `jq`.
+
+```bash
+# 1. Bootstrap the cluster (one time)
+make cluster
+
+# 2. Deploy everything
+make up
+
+# 3. In a separate terminal, expose the ingress
+minikube tunnel
+```
+
+Add this to `/etc/hosts` (the tunnel maps ingress to 127.0.0.1):
 
 ```
-minikube start
-kubectl apply -f k8s/
-# wait for pods, then import the realm (see docs/RUNNING.md)
+127.0.0.1 keycloak.demo.local app.demo.local music.demo.local
 ```
+
+Open **http://app.demo.local**, log in as `shubham` / `password`, and try the
+three call buttons. To tear down:
+
+```bash
+make down       # delete the namespace
+minikube delete # destroy the cluster
+```
+
+See `docs/RUNNING.md` for the full walkthrough with troubleshooting.
 
 ## Layout
 

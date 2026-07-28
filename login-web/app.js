@@ -233,7 +233,19 @@ function setLoading(id, loading) {
   else         { btn.classList.remove("loading"); btn.disabled = false; }
 }
 
-function logout() {
+async function logout() {
+  if (tokens && tokens.id_token) {
+    // OIDC RP-Initiated Logout: tell Keycloak to end the session, then come back.
+    setLoading("btn-logout", true);
+    var meta = await discover();
+    var params = new URLSearchParams({
+      id_token_hint: tokens.id_token,
+      post_logout_redirect_uri: cfg.redirectUri,
+    });
+    window.location.assign(meta.end_session_endpoint + "?" + params);
+    return;
+  }
+  // No session to clear — just reset the UI.
   tokens = null;
   setText("whoami", "not logged in");
   setText("idclaims", "-");

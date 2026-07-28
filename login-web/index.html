@@ -67,7 +67,7 @@
 
   <div class="row">
     <button id="btn-login" onclick="doLogin().catch(showError)">Log in</button>
-    <button id="btn-logout" onclick="doLogout()">Log out</button>
+    <button id="btn-logout" onclick="doLogout().catch(showError)">Log out</button>
     <button id="btn-call" onclick="doCallMusic().catch(showError)">Call music-service</button>
     <button id="btn-call-cc" onclick="doCallMusic('?with=recs&amp;mode=client_credentials').catch(showError)">+ recommendations (client credentials)</button>
     <button id="btn-call-tx" onclick="doCallMusic('?with=recs&amp;mode=token_exchange').catch(showError)">+ recommendations (token exchange)</button>

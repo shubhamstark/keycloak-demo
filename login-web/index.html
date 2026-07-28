@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keycloak demo: login</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.5;
+      color: #222;
+      background: #fff;
+    }
+    h1 { font-size: 22px; }
+    button {
+      font-size: 15px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #888;
+      cursor: pointer;
+      background: #f4f4f4;
+      color: #222;
+    }
+    pre {
+      background: #f1f1f1;
+      color: #222;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+    .muted { color: #666; font-size: 14px; }
+    code { background: #eee; color: #222; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Keycloak demo: a public client</h1>
+  <p class="muted">
+    This page is a public OAuth client. It logs in with authorization code + PKCE,
+    reads the ID token, and calls <code>music-service</code> with the access token.
+    Open the console and read <code>app.js</code> alongside this: every step is
+    commented with the concept it implements.
+  </p>
+
+  <div class="row">
+    <button id="btn-login" onclick="doLogin().catch(showError)">Log in</button>
+    <button id="btn-logout" onclick="doLogout()">Log out</button>
+    <button id="btn-call" onclick="doCallMusic().catch(showError)">Call music-service</button>
+    <button id="btn-call-cc" onclick="doCallMusic('?with=recs&amp;mode=client_credentials').catch(showError)">+ recommendations (client credentials)</button>
+    <button id="btn-call-tx" onclick="doCallMusic('?with=recs&amp;mode=token_exchange').catch(showError)">+ recommendations (token exchange)</button>
+  </div>
+
+  <h3>Who am I (from the ID token)</h3>
+  <pre id="whoami">not logged in</pre>
+
+  <h3>ID token claims</h3>
+  <pre id="idclaims">-</pre>
+
+  <h3>music-service response</h3>
+  <pre id="apiout">-</pre>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

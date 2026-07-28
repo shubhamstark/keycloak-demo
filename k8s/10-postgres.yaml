@@ -1,0 +1,50 @@
+# Postgres: Keycloak's durable source of truth (realms, users, clients, keys).
+# A StatefulSet with a PVC so state survives pod restarts. In production you would
+# more often point Keycloak at a managed database instead.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: keycloak-demo
+spec:
+  selector: { app: postgres }
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: keycloak-demo
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: keycloak
+            - name: POSTGRES_USER
+              value: keycloak
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: demo-secrets, key: POSTGRES_PASSWORD } }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "keycloak"] }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes: []
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 1Gi } }

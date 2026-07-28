@@ -1,16 +1,11 @@
-# One ingress, several hostnames, so each piece has a stable URL the browser can
-# use and tokens validate against a consistent issuer host. Requires the minikube
-# ingress addon and /etc/hosts entries (see docs/RUNNING.md).
-#
-# The /mobile path is rewritten before reaching login-mobile, so the pod sees
-# /index.html instead of /mobile/index.html.
+# Main ingress: keycloak, login-web, and music-service. No path rewrites.
+# login-mobile has its own ingress (60-ingress-mobile.yaml) because its
+# /mobile path needs rewrite-target.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: demo-ingress
   namespace: keycloak-demo
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   rules:
@@ -23,9 +18,6 @@ spec:
     - host: app.demo.local
       http:
         paths:
-          - path: /mobile(/|$)(.*)
-            pathType: ImplementationSpecific
-            backend: { service: { name: login-mobile, port: { number: 80 } } }
           - path: /
             pathType: Prefix
             backend: { service: { name: login-web, port: { number: 80 } } }

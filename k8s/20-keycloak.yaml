@@ -2,6 +2,11 @@
 # Quarkus distribution, pinned to 26.3. Started in dev-friendly mode with the
 # realm auto-imported from a mounted ConfigMap. Standard Token Exchange V2 is on
 # by default in 26.2+, so no build-time feature flags are needed here.
+#
+# Clustering: --cache=ispn switches from local (dev default) to distributed
+# Infinispan. The headless Service lets JGroups discover peers via DNS_PING.
+---
+# Main Service: load-balanced traffic for browser and internal callers.
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,15 +19,29 @@ spec:
       port: 80
       targetPort: 8080
 ---
+# Headless Service: DNS_PING discovery for Infinispan clustering. Each pod
+# gets its own A-record (e.g. 10-244-0-10.keycloak-discovery.keycloak-demo.svc)
+# and JGroups uses these to form the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-discovery
+  namespace: keycloak-demo
+spec:
+  clusterIP: None
+  selector: { app: keycloak }
+  ports:
+    - name: http
+      port: 7800
+      targetPort: 7800
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keycloak
   namespace: keycloak-demo
 spec:
-  # Two replicas would demonstrate clustering (Infinispan via DNS_PING). We keep
-  # one here for a simpler local bring-up; see docs/RUNNING.md to scale up.
-  replicas: 1
+  replicas: 2
   selector: { matchLabels: { app: keycloak } }
   template:
     metadata:
@@ -31,7 +50,7 @@ spec:
       containers:
         - name: keycloak
           image: quay.io/keycloak/keycloak:26.3
-          args: ["start-dev", "--import-realm"]
+          args: ["start-dev", "--import-realm", "--cache=ispn"]
           env:
             - name: KC_DB
               value: postgres
@@ -56,8 +75,12 @@ spec:
             # Force realm re-import on every restart so config changes apply.
             - name: KC_SPI_IMPORT_STRATEGY
               value: OVERWRITE_EXISTING
+            # JGroups DNS_PING: discover peers via the headless Service.
+            - name: JGROUPS_DNS_QUERY
+              value: keycloak-discovery.keycloak-demo.svc.cluster.local
           ports:
             - containerPort: 8080
+            - containerPort: 7800
           volumeMounts:
             - name: realm
               mountPath: /opt/keycloak/data/import

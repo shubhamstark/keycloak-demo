@@ -18,9 +18,11 @@ This repo teaches. It deliberately cuts corners a real deployment must not.
   Android Keystore, or a BFF pattern).
 - No rate limiting, no brute-force tuning, no logging/observability, no network
   policies.
-- The admin-service trusts the `organization` claim for tenant scoping. A real
-  implementation should verify org membership against the database, not just
-  the token claim.
+- The admin-service enforces role checks (`company-admin`) but does not yet
+  enforce cross-organization tenant boundaries — it returns all users in the
+  realm rather than filtering by the caller's organization. A real
+  implementation must verify org membership against the database, not just
+  the token claim, and scope all operations to the caller's tenant.
 
 Use this to understand the flows, then build the real thing with the corners
 uncut.

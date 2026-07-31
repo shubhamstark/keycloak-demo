@@ -19,19 +19,41 @@ The Tajir React SPA logs a user in and calls `dashboard-service` as that user.
 5. `tajir-app` calls `GET /dashboard` on dashboard-service with
    `Authorization: Bearer <access_token>`.
 6. `dashboard-service` validates the access token: signature via JWKS, `iss`,
-   `aud` (must include `dashboard-service`), `exp`. It reads `sub`, `organization`,
-   and `realm_access.roles` and returns data scoped to the user's company.
+   `aud` (must include `dashboard-service`), `exp`. It reads `sub`, `email`,
+   `organization`, and `realm_access.roles` and returns data scoped to the
+   user's company. The `admin-audience` scope is also requested so the token
+   can be forwarded directly to `admin-service` for Flow 2.
 
 The token represents a user from a specific company. `dashboard-service` knows
 both who the user is (`sub`) and which company they belong to (`organization`).
 
-## Flow 2: service-to-service (standard token exchange, RFC 8693)
+## Flow 2: service-to-service (direct forwarding + token exchange)
 
 Triggered by `GET /dashboard/team` in the Tajir React app.
 
 `dashboard-service` needs to list team members from `admin-service`, and it
 must do so on behalf of the user so the admin-service knows which company's
-team to return.
+team to return. The demo shows two approaches:
+
+### 2a. Direct forwarding (what `/dashboard/team` uses)
+
+When the user's access token already carries `admin-service` in its audience
+(because the SPA requested the `admin-audience` scope at login), `dashboard-service`
+forwards the token directly — no exchange step needed.
+
+1. `tajir-app` includes `admin-audience` in the scope parameter at login, so the
+   user's access token has `aud: ["dashboard-service", "admin-service"]`.
+2. `dashboard-service` extracts the user's bearer token from the request context
+   and forwards it directly to `admin-service` via `Authorization: Bearer <same token>`.
+3. `admin-service` validates the token normally. `aud` includes `admin-service`,
+   so the audience check passes. The user's `sub` and `organization` are present
+   from the original token.
+
+### 2b. Token exchange (RFC 8693) — canonical implementation
+
+When a token does NOT have the downstream audience, `dashboard-service` exchanges
+it for one that does. This is implemented in `downstream.go` (`exchangeToken()`) and
+demonstrated in the API Explorer page.
 
 1. `dashboard-service` POSTs to the token endpoint with
    `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
@@ -44,9 +66,10 @@ team to return.
 4. `admin-service` validates it and sees the real user's `sub` and
    `organization`, with `dashboard-service` recorded as the authorized party.
 
-Use this when the downstream service needs the user's identity and tenant.
+Both approaches preserve the user's identity and tenant downstream. Use direct
+forwarding when the token already has the audience; use exchange when it doesn't.
 
-## Flow 3: service-to-service (client credentials)
+## Flow 3: service-to-Keycloak (client credentials)
 
 Triggered internally when `admin-service` needs to call Keycloak's Admin REST API.
 
@@ -85,6 +108,7 @@ and no server-side session.
 ## The one-line contrast
 
 - Client credentials: "I am admin-service."
+- Direct forwarding: "I am user X from company Y, and dashboard-service is passing my token to admin-service."
 - Token exchange: "I am dashboard-service, acting for user X from company Y."
 
 ## What every service does the same

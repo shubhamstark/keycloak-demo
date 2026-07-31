@@ -116,7 +116,7 @@ server, only "realm demo's token endpoint." The `master` realm exists by default
 and is meant only for administering Keycloak itself; you do not put application
 users in it. You create a realm per security boundary and put your users and
 clients there. In the demo, that realm is called `demo`, and everything, the
-login-web client, the two services, the user, lives inside it.
+`tajir-app` client, the two services, the users, lives inside it.
 
 The realm is also where the multi-tenancy question begins, and it is worth
 flagging now because it returns later. If a realm is a sealed universe, then one
@@ -141,9 +141,9 @@ stores and hashes.
 
 The client is a Keycloak client, and this is where the public-versus-confidential
 distinction from the OAuth article becomes a literal setting. A client marked
-public holds no secret and is expected to use PKCE; the demo's `login-web` is
+public holds no secret and is expected to use PKCE; the demo's `tajir-app` is
 one. A client marked confidential has a secret it uses to authenticate to the
-token endpoint; the demo's `music-service` is one. The redirect URIs the OAuth
+token endpoint; the demo's `dashboard-service` is one. The redirect URIs the OAuth
 article insisted must be pre-registered are a text field on the client. Whether
 PKCE is required, which flows are enabled, how long its tokens live, all of it is
 per-client configuration.
@@ -220,9 +220,9 @@ scopes, and the claims they produce are what end up in the token.
 This is where several threads from the earlier articles become concrete
 configuration. The `aud` claim, the audience check that defeated the confused
 deputy in the OIDC article, is produced by an audience mapper. In the demo, a
-client scope named `music-audience` carries a mapper that stamps
-`aud: music-service` onto the tokens issued to `login-web`, which is precisely
-what lets `music-service` accept them and reject tokens meant for anything else.
+client scope named `dashboard-audience` carries a mapper that stamps
+`aud: dashboard-service` onto the tokens issued to `tajir-app`, which is precisely
+what lets `dashboard-service` accept them and reject tokens meant for anything else.
 The roles that your services authorize on arrive through a roles mapper. Custom
 claims your application needs are just more mappers.
 
@@ -324,18 +324,14 @@ model, the thing your services actually read on each request:
 ```json
 {
   "sub": "f7c2a1e0-9b3d-4a55-8c21-1e0d7a9b3c44",
-  "preferred_username": "alice@acme.com",
-  "aud": "music-service",
-  "iss": "https://auth.example.com/realms/demo",
+  "preferred_username": "shubham",
+  "email": "shubham@acme.com",
+  "aud": "dashboard-service",
+  "iss": "http://keycloak.demo.local/realms/demo",
   "exp": 1735689600,
-  "organization": {
-    "acme": { "id": "org-acme-001" }
-  },
+  "organization": ["acme"],
   "realm_access": {
-    "roles": ["default-roles-demo", "listener"]
-  },
-  "resource_access": {
-    "music-service": { "roles": ["library:read"] }
+    "roles": ["default-roles-demo", "company-admin"]
   }
 }
 ```
@@ -344,10 +340,9 @@ Two things travel together here. The `organization` claim says which company the
 user belongs to (present because the client requested the `organization` scope),
 and the role claims say what they may do. Your service reads both: it scopes data
 to the company from `organization`, and it authorizes the action from
-`realm_access.roles` and `resource_access.<client>.roles`. Tenant and permission,
-in one validated token.
+`realm_access.roles`. Tenant and permission, in one validated token.
 
-Now the harder half: how does a company admin at Acme assign the `library:read`
+Now the harder half: how does a company admin at Acme assign the `tax-filer`
 role to a colleague, without any ability to affect a different company? The wrong
 answer is to hand each company direct Keycloak admin access, that would let them
 see and change the whole realm. The right answer for most products is to keep
@@ -394,10 +389,10 @@ represents a service, not a person:
 
 ```json
 {
-  "sub": "service-account-admin-backend",
+  "sub": "service-account-admin-service",
   "aud": "realm-management",
-  "iss": "https://auth.example.com/realms/demo",
-  "azp": "admin-backend",
+  "iss": "http://keycloak.demo.local/realms/demo",
+  "azp": "admin-service",
   "realm_access": {
     "roles": ["manage-users", "view-users", "query-users"]
   }
@@ -434,19 +429,17 @@ service identity:
 ```json
 {
   "sub": "f7c2a1e0-9b3d-4a55-8c21-1e0d7a9b3c44",
-  "aud": "recommendation-service",
-  "iss": "https://auth.example.com/realms/demo",
-  "azp": "music-service",
-  "organization": {
-    "acme": { "id": "org-acme-001" }
-  },
-  "realm_access": { "roles": ["listener"] }
+  "aud": "admin-service",
+  "iss": "http://keycloak.demo.local/realms/demo",
+  "azp": "dashboard-service",
+  "organization": ["acme"],
+  "realm_access": { "roles": ["company-admin"] }
 }
 ```
 
 The `sub` is still the original user and the `organization` claim still says Acme,
 so the downstream service knows exactly which user and which tenant it is acting
-for, while `azp` records that `music-service` made the call. Contrast this with the
+for, while `azp` records that `dashboard-service` made the call. Contrast this with the
 service-account token above, where the user is gone entirely. That is the whole
 choice token exchange gives you: carry the user and tenant forward, or act as the
 service. Both are valid; they answer different questions, and in a multi-tenant
@@ -487,7 +480,7 @@ know, distinguished only by its grant type.
 POST /realms/demo/protocol/openid-connect/token
   grant_type=refresh_token
   refresh_token=eyJ...
-  client_id=login-web
+  client_id=tajir-app
 ```
 
 Back comes a fresh access token, usually a new refresh token, and, as long as the

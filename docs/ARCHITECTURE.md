@@ -54,21 +54,32 @@ an access token, and calls dashboard-service with it.
 - The ID token is decoded and displayed. The access token is sent to
   `dashboard-service` in an `Authorization: Bearer` header.
 - `dashboard-service` validates the token: signature (JWKS), issuer, audience,
-  expiry. It extracts the user's organization from the `organization` claim
-  and returns data scoped to that company.
+  expiry. It derives the user's organization first from the `organization`
+  claim (when present) and falls back to the email domain (e.g.
+  `shubham@acme.com` → `acme`). It returns data scoped to that company.
 
-### 2. Token exchange (service on behalf of user)
+### 2. Direct forwarding / token exchange (service on behalf of user)
 
 When `dashboard-service` needs to call `admin-service` (e.g. to list team
-members), it exchanges the user's access token for a new token targeting
-`admin-service`. The downstream call preserves the user's identity
-(`sub`) and organization.
+members), it must preserve the user's identity (`sub`) and organization.
+The demo shows two approaches:
+
+**Direct forwarding** (used by `/dashboard/team`): the user's access token
+already carries `admin-service` in its audience (the SPA requests the
+`admin-audience` scope at login), so `dashboard-service` forwards the token
+directly — no exchange step needed.
+
+**Token exchange** (RFC 8693, implemented in `downstream.go`): when a
+token does NOT have the downstream audience, `dashboard-service` exchanges
+it for one that does.
 
 - `dashboard-service` POSTs to Keycloak's token endpoint with
   `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`.
 - Keycloak returns a token with the same `sub` but `aud=admin-service`
   and `azp=dashboard-service`.
 - `admin-service` validates it and sees the real user.
+
+Both paths preserve user identity and organization downstream.
 
 ### 3. Client credentials (service as itself)
 
@@ -109,20 +120,25 @@ same checks:
 
 Client scopes add audience claims to access tokens:
 
-| Scope | Mapper | Adds `aud` |
+| Scope | Mapper | Adds |
 |---|---|---|
-| `dashboard-audience` | `oidc-audience-mapper` | `dashboard-service` |
-| `admin-audience` | `oidc-audience-mapper` | `admin-service` |
+| `dashboard-audience` | `oidc-audience-mapper` | `aud: dashboard-service` |
+| `dashboard-audience` | `oidc-usermodel-realm-role-mapper` | `realm_access.roles` |
+| `admin-audience` | `oidc-audience-mapper` | `aud: admin-service` |
 
-The scopes are default scopes on the relevant clients. The SPA also requests
-`dashboard-audience` explicitly. The `organization` scope adds the org claim
-so services know which tenant the user belongs to.
+The `dashboard-audience` scope is a default scope on `tajir-app` and carries
+both the audience mapper AND the realm-roles mapper. The SPA explicitly
+requests `admin-audience` in its scope parameter so the access token also
+includes `aud: admin-service`, enabling direct forwarding to `admin-service`
+(Flow 2). The `organization` scope adds the org claim so services know which
+tenant the user belongs to.
 
 ## Identity propagation
 
 | Pattern | Token subject | Caller identity downstream |
 |---|---|---|
 | User calls dashboard-service | User (e.g. `shubham`) | User authenticated at `tajir-app` |
+| dashboard → admin (direct forward) | User (`shubham`) | User, token passed through |
 | dashboard → admin (token exchange) | User (`shubham`) | `dashboard-service` on behalf of user |
 | admin → Keycloak Admin API (client creds) | Service account | `admin-service` acting as itself |
 

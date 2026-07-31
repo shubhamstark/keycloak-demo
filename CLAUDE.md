@@ -57,10 +57,13 @@ no sessions, refresh rotation, localStorage persistence.
 
 1. Update the realm export if it involves clients, scopes, mappers, or accounts.
 2. Update the relevant service's `auth.go`.
-3. Update `docs/AUTH-FLOWS.md` so the prose still matches the wire.
-4. Keep the three docs (`ARCHITECTURE.md`, `AUTH-FLOWS.md`, `RUNNING.md`)
+3. Update the React app's `config.ts` (scopes, issuer, clientId) and
+   `auth/oidc-config.ts` (OIDC client settings) if the change affects what
+   the SPA requests or how it talks to Keycloak.
+4. Update `docs/AUTH-FLOWS.md` so the prose still matches the wire.
+5. Keep the three docs (`ARCHITECTURE.md`, `AUTH-FLOWS.md`, `RUNNING.md`)
    internally consistent.
-5. Update `keycloak-mapped.md` if the change affects a concept it describes.
+6. Update `keycloak-mapped.md` if the change affects a concept it describes.
 
 ## What good looks like
 

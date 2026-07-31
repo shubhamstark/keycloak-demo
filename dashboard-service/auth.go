@@ -32,9 +32,7 @@ type Claims struct {
 	Email           string `json:"email"`
 	GivenName       string `json:"given_name"`
 	FamilyName      string `json:"family_name"`
-	RealmAccess     struct {
-		Roles []string `json:"roles"`
-	} `json:"realm_access"`
+	RealmAccess    []string `json:"realm_access"`
 	ResourceAccess map[string]struct {
 		Roles []string `json:"roles"`
 	} `json:"resource_access"`
@@ -113,7 +111,7 @@ func bearerToken(r *http.Request) (string, error) {
 
 // HasRole checks whether the claims contain a specific realm role.
 func (c *Claims) HasRole(role string) bool {
-	for _, r := range c.RealmAccess.Roles {
+	for _, r := range c.RealmAccess {
 		if r == role {
 			return true
 		}

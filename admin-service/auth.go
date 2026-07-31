@@ -14,6 +14,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -34,9 +35,7 @@ type Claims struct {
 	Scope           string `json:"scope"`
 	PreferredUser   string `json:"preferred_username"`
 	Email           string `json:"email"`
-	RealmAccess     struct {
-		Roles []string `json:"roles"`
-	} `json:"realm_access"`
+	RealmAccess     []string `json:"realm_access"`
 	Organization map[string]struct {
 		ID string `json:"id"`
 	} `json:"organization"`
@@ -59,12 +58,15 @@ func (v *Validator) Require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, err := bearerToken(r)
 		if err != nil {
+			log.Printf("admin-service: missing bearer token: %v", err)
 			http.Error(w, "missing bearer token", http.StatusUnauthorized)
 			return
 		}
 
+		log.Printf("admin-service: verifying token (len=%d, first 30: %s...)", len(raw), firstN(raw, 30))
 		tok, err := v.verifier.Verify(r.Context(), raw)
 		if err != nil {
+			log.Printf("admin-service: token verification failed: %v", err)
 			http.Error(w, "invalid token", http.StatusUnauthorized)
 			return
 		}
@@ -101,7 +103,7 @@ func bearerToken(r *http.Request) (string, error) {
 }
 
 func (c *Claims) HasRole(role string) bool {
-	for _, r := range c.RealmAccess.Roles {
+	for _, r := range c.RealmAccess {
 		if r == role {
 			return true
 		}
@@ -114,4 +116,11 @@ func (c *Claims) OrgName() string {
 		return name
 	}
 	return ""
+}
+
+func firstN(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }

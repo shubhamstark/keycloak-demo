@@ -90,7 +90,7 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	resp := map[string]any{
 		"company":       companyInfo(org),
-		"your_roles":    claims.RealmAccess.Roles,
+		"your_roles":    claims.RealmAccess,
 		"organization":  org,
 		"authenticated": true,
 	}
@@ -110,6 +110,7 @@ func (h *Handlers) Banking(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{
 		"company":  claims.OrgName(),
 		"accounts": bankAccounts(claims.OrgName()),
+		"user":     claims.PreferredUser,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -127,6 +128,7 @@ func (h *Handlers) Tax(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{
 		"company": claims.OrgName(),
 		"filings": vatFilings(claims.OrgName()),
+		"user":    claims.PreferredUser,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

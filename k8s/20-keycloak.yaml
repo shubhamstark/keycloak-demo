@@ -41,7 +41,7 @@ metadata:
   name: keycloak
   namespace: keycloak-demo
 spec:
-  replicas: 2
+  replicas: 1
   selector: { matchLabels: { app: keycloak } }
   template:
     metadata:
@@ -50,7 +50,7 @@ spec:
       containers:
         - name: keycloak
           image: quay.io/keycloak/keycloak:26.3
-          args: ["start-dev", "--import-realm", "--cache=ispn"]
+          args: ["start-dev", "--import-realm", "--cache=local"]
           env:
             - name: KC_DB
               value: postgres

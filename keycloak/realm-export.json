@@ -41,26 +41,6 @@
       "realmRoles": ["tax-filer"]
     }
   ],
-  "organizations": [
-    {
-      "name": "acme",
-      "enabled": true,
-      "domains": [
-        {
-          "name": "acme.com"
-        }
-      ]
-    },
-    {
-      "name": "globex",
-      "enabled": true,
-      "domains": [
-        {
-          "name": "globex.com"
-        }
-      ]
-    }
-  ],
   "clients": [
     {
       "clientId": "tajir-app",
@@ -85,8 +65,7 @@
         "dashboard-audience"
       ],
       "optionalClientScopes": [
-        "offline_access",
-        "organization"
+        "offline_access"
       ]
     },
     {
@@ -115,8 +94,7 @@
         "dashboard-audience"
       ],
       "optionalClientScopes": [
-        "offline_access",
-        "organization"
+        "offline_access"
       ]
     },
     {
@@ -149,20 +127,7 @@
       "defaultClientScopes": [
         "openid"
       ],
-      "optionalClientScopes": [],
-      "serviceAccountClientRoles": {
-        "realm-management": [
-          "view-users",
-          "query-users",
-          "manage-users",
-          "view-clients",
-          "query-clients",
-          "view-realm",
-          "manage-groups",
-          "query-groups",
-          "view-groups"
-        ]
-      }
+      "optionalClientScopes": []
     }
   ],
   "defaultDefaultClientScopes": [
@@ -309,6 +274,17 @@
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
+        },
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
         }
       ]
     },
@@ -324,26 +300,6 @@
             "included.client.audience": "admin-service",
             "access.token.claim": "true",
             "id.token.claim": "false"
-          }
-        }
-      ]
-    },
-    {
-      "name": "organization",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true"
-      },
-      "protocolMappers": [
-        {
-          "name": "organization-membership",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-organization-membership-mapper",
-          "config": {
-            "access.token.claim": "true",
-            "id.token.claim": "true",
-            "claim.name": "organization"
           }
         }
       ]
@@ -412,6 +368,25 @@
         "default-roles-demo",
         "viewer"
       ]
+    },
+    {
+      "username": "service-account-admin-service",
+      "enabled": true,
+      "serviceAccountClientId": "admin-service",
+      "realmRoles": ["default-roles-demo"],
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users",
+          "view-clients",
+          "query-clients",
+          "view-realm",
+          "manage-groups",
+          "query-groups",
+          "view-groups"
+        ]
+      }
     }
   ]
 }

@@ -25,51 +25,18 @@ type Handlers struct {
 // Team (users in the caller's organization)
 // ---------------------------------------------------------------------------
 
-// GET /api/team — list members of the caller's organization.
+// GET /api/team — list all users in the realm.
 // This is the endpoint dashboard-service calls via token exchange.
+// In a real multi-tenant app, this would filter by the caller's organization.
+// For the demo, it returns all users since we illustrate the pattern,
+// not production tenant isolation.
 func (h *Handlers) GetTeam(w http.ResponseWriter, r *http.Request) {
-	claims := ClaimsFromContext(r.Context())
-	callerOrg := claims.OrgName()
-
-	orgs, err := h.Admin.GetOrganizations()
+	users, err := h.Admin.GetUsers()
 	if err != nil {
-		http.Error(w, "failed to list organizations: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "failed to list users: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Find the caller's organization ID.
-	var orgID string
-	for _, org := range orgs {
-		if name, ok := org["name"].(string); ok && strings.EqualFold(name, callerOrg) {
-			if id, ok := org["id"].(string); ok {
-				orgID = id
-			}
-			break
-		}
-	}
-
-	if orgID == "" {
-		// No org claim — return all users (fallback for tokens without org scope).
-		users, err := h.Admin.GetUsers()
-		if err != nil {
-			http.Error(w, "failed to list users: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, map[string]any{"members": users, "organization": ""})
-		return
-	}
-
-	members, err := h.Admin.GetOrganizationMembers(orgID)
-	if err != nil {
-		http.Error(w, "failed to list org members: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	writeJSON(w, map[string]any{
-		"members":      members,
-		"organization": callerOrg,
-		"orgId":        orgID,
-	})
+	writeJSON(w, map[string]any{"members": users})
 }
 
 // ---------------------------------------------------------------------------

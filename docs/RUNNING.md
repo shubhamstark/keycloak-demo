@@ -1,6 +1,6 @@
-# Running the demo on minikube
+# Running the Tajir demo on minikube
 
-A full local bring-up. Expect ~10 minutes the first time (image pulls).
+A full local bring-up. Expect ~12 minutes the first time (image pulls).
 
 ## Prerequisites
 
@@ -16,29 +16,27 @@ minikube addons enable ingress
 
 ## 2. Point the demo hostnames at minikube
 
-The demo uses three hostnames so token issuers and audiences stay consistent.
-Add them to your hosts file, mapped to the minikube IP:
+The demo uses four hostnames. Add them to your hosts file:
 
 ```
-echo "$(minikube ip) keycloak.demo.local app.demo.local music.demo.local" | sudo tee -a /etc/hosts
+echo "$(minikube ip) keycloak.demo.local app.demo.local api.demo.local admin.demo.local" | sudo tee -a /etc/hosts
 ```
 
-## 3. Build the three service images into minikube's Docker
+## 3. Build the service images into minikube's Docker
 
-Point your shell at minikube's Docker daemon so the images are available to the
-cluster without a registry:
+Point your shell at minikube's Docker daemon:
 
 ```
 eval $(minikube docker-env)
 
-docker build -t music-service:demo ./music-service
-docker build -t recommendation-service:demo ./recommendation-service
-docker build -t login-web:demo ./login-web
+docker build -t dashboard-service:demo ./dashboard-service
+docker build -t admin-service:demo ./admin-service
+docker build -t tajir-app:demo ./tajir-app
 ```
 
 ## 4. Create the realm ConfigMap
 
-Keycloak imports the realm from a mounted ConfigMap. Create it from the export:
+Keycloak imports the realm from a mounted ConfigMap:
 
 ```
 kubectl create namespace keycloak-demo --dry-run=client -o yaml | kubectl apply -f -
@@ -60,47 +58,29 @@ realm):
 kubectl -n keycloak-demo get pods -w
 ```
 
-You should eventually see `keycloak`, `postgres`, `music-service`,
-`recommendation-service`, and `login-web` all `Running` / ready.
+You should see `keycloak`, `postgres`, `dashboard-service`, `admin-service`,
+and `tajir-app` all `Running` / ready.
 
 ## 6. Use it
 
-- Open `http://app.demo.local` (the SPA — session-based web auth).
-- Click "Log in", authenticate as `shubham` / `password`.
-- You should see the ID token claims render ("who am I").
-- Click "Call music-service" to see the user's favourites (user-to-service).
-- Click "+ recommendations (client credentials)" and
-  "+ recommendations (token exchange)" to trigger the two service-to-service
-  patterns.
-- Open `http://app.demo.local/mobile` (the phone-styled mobile demo — token-based,
-  no sessions). Log in, then reload the page: tokens survive in `localStorage`.
-  Click "Refresh token" to see refresh rotation. Click "Forget tokens" to
-  clear. Compare with the SPA: same OAuth, different persistence.
-
-Watch the downstream identity change:
-
-```
-kubectl -n keycloak-demo logs deploy/recommendation-service -f
-```
-
-With client credentials, the logged `sub` is the service account. With token
-exchange, it is the real user (`shubham`).
+- Open `http://app.demo.local` — the Tajir React app.
+- Click "Sign in with your company account".
+- Log in as `shubham` / `password` (Acme Corp, company-admin).
+- **Dashboard**: company overview, bank accounts, VAT filings, team size.
+- **Tokens**: decoded access, ID, and refresh tokens with claim annotations.
+- **API Explorer**: call services, see tokens in flight, curl equivalents.
+- **Refresh**: trigger refresh rotation, simulate token reuse.
+- **Users & Orgs**: view team, invite users, assign roles (company-admin only).
+- **Roles & Groups**: create groups, assign roles to groups (company-admin only).
+- Try logging in as `alice` / `password` (Acme Corp, tax-filer) — sees fewer
+  permissions; admin pages are read-only.
+- Try `bob` / `password` (Globex Industries, viewer) — sees Globex data,
+  cannot see Acme users.
 
 ## 7. Explore Keycloak (optional)
 
 `http://keycloak.demo.local`, admin console, log in as `admin` / `admin`. Look at
-Realm `demo` → Clients, Client scopes (the audience mappers), and Users.
-
-## Optional: demonstrate clustering
-
-Scale Keycloak to two replicas to see the Infinispan cluster form (discovery via
-DNS_PING on Kubernetes). On single-node minikube this shows the shape, not true
-HA:
-
-```
-kubectl -n keycloak-demo scale deploy/keycloak --replicas=2
-kubectl -n keycloak-demo logs deploy/keycloak | grep -i infinispan
-```
+Realm `demo` → Clients, Client scopes, Roles, Groups, Organizations, Users.
 
 ## Teardown
 
@@ -114,7 +94,9 @@ minikube delete
 - Token validation fails with an issuer mismatch: the browser and the services
   must all see Keycloak at the same hostname (`keycloak.demo.local`). Check the
   `/etc/hosts` entry and `KC_HOSTNAME`.
-- `login-web` cannot reach `music-service`: the SPA calls `music.demo.local`;
+- `tajir-app` cannot reach `dashboard-service`: the SPA calls `api.demo.local`;
   confirm that ingress host resolves and the service is ready.
 - Keycloak CrashLoopBackOff: usually Postgres is not ready yet, or the realm
   ConfigMap is missing. Check `kubectl -n keycloak-demo logs deploy/keycloak`.
+- Admin operations fail: confirm `admin-service`'s service account has
+  management roles in the realm export.

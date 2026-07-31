@@ -5,9 +5,65 @@
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-demo",
+        "description": "${role_default-roles}"
+      },
+      {
+        "name": "company-admin",
+        "description": "Can manage users, roles, and groups within their own company"
+      },
+      {
+        "name": "tax-filer",
+        "description": "Can file and view VAT returns"
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only access to company services"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Acme Admins",
+      "path": "/Acme Admins",
+      "realmRoles": ["company-admin"]
+    },
+    {
+      "name": "Acme Tax Team",
+      "path": "/Acme Tax Team",
+      "realmRoles": ["tax-filer"]
+    }
+  ],
+  "organizations": [
+    {
+      "name": "acme",
+      "enabled": true,
+      "domains": [
+        {
+          "name": "acme.com"
+        }
+      ]
+    },
+    {
+      "name": "globex",
+      "enabled": true,
+      "domains": [
+        {
+          "name": "globex.com"
+        }
+      ]
+    }
+  ],
   "clients": [
     {
-      "clientId": "login-web",
+      "clientId": "tajir-app",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -26,9 +82,12 @@
         "openid",
         "profile",
         "email",
-        "music-audience"
+        "dashboard-audience"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [
+        "offline_access",
+        "organization"
+      ]
     },
     {
       "clientId": "login-mobile",
@@ -53,15 +112,18 @@
         "openid",
         "profile",
         "email",
-        "music-audience"
+        "dashboard-audience"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [
+        "offline_access",
+        "organization"
+      ]
     },
     {
-      "clientId": "music-service",
+      "clientId": "dashboard-service",
       "enabled": true,
       "publicClient": false,
-      "secret": "music-service-demo-secret",
+      "secret": "dashboard-service-demo-secret",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -72,22 +134,35 @@
         "openid",
         "profile",
         "email",
-        "recommendation-audience"
+        "admin-audience"
       ],
       "optionalClientScopes": []
     },
     {
-      "clientId": "recommendation-service",
+      "clientId": "admin-service",
       "enabled": true,
       "publicClient": false,
-      "secret": "recommendation-service-demo-secret",
+      "secret": "admin-service-demo-secret",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "defaultClientScopes": [
         "openid"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [],
+      "serviceAccountClientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users",
+          "view-clients",
+          "query-clients",
+          "view-realm",
+          "manage-groups",
+          "query-groups",
+          "view-groups"
+        ]
+      }
     }
   ],
   "defaultDefaultClientScopes": [
@@ -222,15 +297,15 @@
       ]
     },
     {
-      "name": "music-audience",
+      "name": "dashboard-audience",
       "protocol": "openid-connect",
       "protocolMappers": [
         {
-          "name": "music-service-audience",
+          "name": "dashboard-service-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.client.audience": "music-service",
+            "included.client.audience": "dashboard-service",
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
@@ -238,17 +313,37 @@
       ]
     },
     {
-      "name": "recommendation-audience",
+      "name": "admin-audience",
       "protocol": "openid-connect",
       "protocolMappers": [
         {
-          "name": "recommendation-service-audience",
+          "name": "admin-service-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.client.audience": "recommendation-service",
+            "included.client.audience": "admin-service",
             "access.token.claim": "true",
             "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "organization",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "organization-membership",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-organization-membership-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "claim.name": "organization"
           }
         }
       ]
@@ -259,9 +354,9 @@
       "username": "shubham",
       "enabled": true,
       "emailVerified": true,
-      "email": "shubham@demo.local",
+      "email": "shubham@acme.com",
       "firstName": "Shubham",
-      "lastName": "Demo",
+      "lastName": "Kaushal",
       "credentials": [
         {
           "type": "password",
@@ -270,7 +365,52 @@
         }
       ],
       "realmRoles": [
-        "default-roles-demo"
+        "default-roles-demo",
+        "company-admin"
+      ],
+      "groups": [
+        "Acme Admins"
+      ]
+    },
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "alice@acme.com",
+      "firstName": "Alice",
+      "lastName": "Chen",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-demo",
+        "tax-filer"
+      ],
+      "groups": [
+        "Acme Tax Team"
+      ]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "bob@globex.com",
+      "firstName": "Bob",
+      "lastName": "Singh",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-demo",
+        "viewer"
       ]
     }
   ]

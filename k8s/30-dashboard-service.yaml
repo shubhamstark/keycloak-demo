@@ -1,0 +1,53 @@
+# dashboard-service: Tajir business API. Validates bearer tokens and serves
+# company data (banking, tax, team) scoped to the user's organization.
+# Also demonstrates token exchange to call admin-service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: keycloak-demo
+spec:
+  selector: { app: dashboard-service }
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-service
+  namespace: keycloak-demo
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: dashboard-service } }
+  template:
+    metadata:
+      labels: { app: dashboard-service }
+    spec:
+      containers:
+        - name: dashboard-service
+          image: dashboard-service:demo
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OIDC_ISSUER
+              value: http://keycloak.demo.local/realms/demo
+            - name: OIDC_AUDIENCE
+              value: dashboard-service
+            - name: OIDC_TOKEN_ENDPOINT
+              value: http://keycloak.demo.local/realms/demo/protocol/openid-connect/token
+            - name: CLIENT_ID
+              value: dashboard-service
+            - name: CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: demo-secrets, key: DASHBOARD_SERVICE_CLIENT_SECRET } }
+            - name: ADMIN_SERVICE_URL
+              value: http://admin-service
+            - name: ADMIN_AUDIENCE
+              value: admin-service
+            - name: PORT
+              value: "8080"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10

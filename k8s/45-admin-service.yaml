@@ -1,0 +1,54 @@
+# admin-service: delegated admin backend for Tajir.
+# Holds a service account with Keycloak management roles and proxies
+# admin operations while enforcing tenant boundaries.
+# See keycloak-mapped.md, lines 350-425.
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: keycloak-demo
+spec:
+  selector: { app: admin-service }
+  ports:
+    - port: 80
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+  namespace: keycloak-demo
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: admin-service } }
+  template:
+    metadata:
+      labels: { app: admin-service }
+    spec:
+      containers:
+        - name: admin-service
+          image: admin-service:demo
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OIDC_ISSUER
+              value: http://keycloak.demo.local/realms/demo
+            - name: OIDC_AUDIENCE
+              value: admin-service
+            - name: OIDC_TOKEN_ENDPOINT
+              value: http://keycloak.demo.local/realms/demo/protocol/openid-connect/token
+            - name: KEYCLOAK_URL
+              value: http://keycloak.demo.local
+            - name: KEYCLOAK_REALM
+              value: demo
+            - name: CLIENT_ID
+              value: admin-service
+            - name: CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: demo-secrets, key: ADMIN_SERVICE_CLIENT_SECRET } }
+            - name: PORT
+              value: "8082"
+          ports:
+            - containerPort: 8082
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8082 }
+            initialDelaySeconds: 3
+            periodSeconds: 10

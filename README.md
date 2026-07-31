@@ -1,115 +1,63 @@
-# keycloak-demo
+# Tajir — an OAuth 2.0 + OIDC demo on Keycloak
 
-A small, runnable system that shows how OAuth 2.0 and OpenID Connect actually work
-in Keycloak. It is the concrete companion to the "OAuth from first principles",
-"OpenID Connect", and "Keycloak architecture" articles: every abstract role from
-those pieces is a real process you can watch here.
+A runnable companion to `keycloak-mapped.md`, deployed to minikube. The domain
+is **Tajir**, a B2B platform where companies manage banking, VAT filing, and
+team access.
 
-## What is in the box
+## What this repo demonstrates
 
-Five services, deployed to a local Kubernetes cluster (minikube), plus Keycloak
-and its Postgres database.
+Three core token flows, each mapping to a concept from the article:
 
-| Component | Role in OAuth / OIDC terms | What it demonstrates |
-|---|---|---|
-| `keycloak` | Authorization server + OIDC provider | Issues and signs tokens, hosts the login page |
-| `postgres` | Keycloak's durable state | Realms, users, clients, keys, sessions |
-| `login-web` | Public client (SPA) | Authorization code + PKCE, session-based SSO |
-| `login-mobile` | Public client (mobile simulation) | PKCE + refresh rotation + localStorage persistence |
-| `music-service` | Resource server, and a client | Validates access tokens via JWKS; calls other services |
-| `recommendation-service` | Resource server | Only accepts tokens minted for it (audience check) |
+1. **User → API (authorization code + PKCE)**: a React SPA logs in, gets an access
+   token, and calls a backend that scopes data to the user's company.
+2. **Service → Service (token exchange, RFC 8693)**: the backend calls a
+   downstream service on behalf of the user, preserving identity and org.
+3. **Service → Keycloak (client credentials)**: the admin backend holds a
+   service account and calls Keycloak's Admin REST API to manage users,
+   roles, and groups — enforcing tenant boundaries in code.
 
-## The three things it proves
-
-1. User-to-service auth. The browser logs in through `login-web` using
-   authorization code + PKCE, then calls `music-service` with the resulting
-   access token. `music-service` validates that token against Keycloak's JWKS.
-
-2. Service-to-service auth, in the two forms that matter:
-   - Client credentials: `music-service` calls `recommendation-service` as
-     itself, using its own client id and secret. The token's subject is the
-     service account, not a user.
-   - Standard token exchange (RFC 8693): `music-service` takes the user's token
-     and exchanges it at Keycloak for a new token whose audience is
-     `recommendation-service`, so the downstream call still carries the user's
-     identity.
-
-3. Mobile token-based auth. `login-mobile` demonstrates the patterns that native
-   apps use: tokens persisted to `localStorage` (simulating OS keychains),
-   refresh token rotation, and no server-side sessions. Open
-   **http://app.demo.local/mobile** to see it. Compare `login-web/app.js` and
-   `login-mobile/app.js` side by side — same OAuth, different persistence.
-
-See `docs/AUTH-FLOWS.md` for the step-by-step of all four flows, and
-`docs/MOBILE.md` for the web vs mobile comparison.
-
-## Branches: web vs mobile
-
-This branch (`mobile`) includes both `login-web` and `login-mobile`.
-The `web` branch keeps only the session-based SPA. Switch between them:
-
-```bash
-git checkout web    # SPA + sessions only
-git checkout mobile # SPA + mobile token-based demo
-```
-
-| Branch | Client | Token handling | Refresh | Sessions |
-|---|---|---|---|---|
-| [web](https://github.com/shubhamstark/keycloak-demo/tree/web) | `login-web` (SPA) | In-memory only | None | Keycloak SSO cookie |
-| [mobile](https://github.com/shubhamstark/keycloak-demo/tree/mobile) | both | localStorage (mobile) | Rotating | None on mobile |
+It also shows:
+- **Multi-tenancy**: multiple companies (Keycloak organizations)
+- **Delegated administration**: company admins manage their own team
+- **Token-based auth**: refresh token rotation, replay detection, no sessions
+- **Token inspection**: decoded JWT viewer with claim annotations
 
 ## Quick start
 
-Prerequisites: `minikube`, `kubectl`, `docker`, `jq`.
-
-```bash
-# 1. Bootstrap the cluster (one time)
-make cluster
-
-# 2. Deploy everything
-make up
-
-# 3. In a separate terminal, expose the ingress
+```
+make cluster   # start minikube + enable ingress + patch CoreDNS
+make up        # build images + create realm ConfigMap + apply manifests
 minikube tunnel
+# Add to /etc/hosts: 127.0.0.1 keycloak.demo.local app.demo.local api.demo.local admin.demo.local
 ```
 
-Add this to `/etc/hosts` (the tunnel maps ingress to 127.0.0.1):
+Open `http://app.demo.local`. Log in as `shubham` / `password`.
 
-```
-127.0.0.1 keycloak.demo.local app.demo.local music.demo.local
-```
+## Demo accounts
 
-Open **http://app.demo.local**, log in as `shubham` / `password`, and try the
-three call buttons. To tear down:
-
-```bash
-make down       # delete the namespace
-minikube delete # destroy the cluster
-```
-
-See `docs/RUNNING.md` for the full walkthrough with troubleshooting.
+| Username | Password | Company | Roles |
+|---|---|---|---|
+| `shubham` | `password` | Acme Corp | company-admin |
+| `alice` | `password` | Acme Corp | tax-filer |
+| `bob` | `password` | Globex Industries | viewer |
+| `admin` | `admin` | — | Keycloak admin (keycloak.demo.local) |
 
 ## Layout
 
 ```
-k8s/                     raw Kubernetes manifests, one file per component
-keycloak/                realm export (clients, scopes, users) + notes
-login-web/               the SPA public client (plain HTML/JS)
-login-mobile/            mobile auth demo (phone-styled, PKCE + refresh + localStorage)
-music-service/           Go resource server that also calls downstream services
-recommendation-service/  Go resource server, downstream target
-docs/                    architecture, auth flows, mobile guide, running guide
+tajir-app/              React SPA (Vite + React + oidc-client-ts)
+dashboard-service/      Go business API (resource server + token exchange)
+admin-service/          Go admin backend (delegated admin + client credentials)
+keycloak/               Realm export (clients, scopes, roles, groups, orgs, users)
+k8s/                    Kubernetes manifests (Deployments, Services, Ingress)
+docs/                   Architecture, auth flows, running guide
+keycloak-mapped.md      The article this demo illustrates
 ```
 
-Each folder has its own README. Start with `docs/RUNNING.md` to bring it up, then
-`docs/AUTH-FLOWS.md` to understand what is happening on the wire.
+## Branches
 
-## Versions
+- `tajir-web` — Tajir React SPA + Go services + token-based auth (this branch)
+- `mobile` — previous iteration: plain JS SPA + mobile demo + music services
+- `main` — original music-service demo
 
-Pinned to Keycloak 26.3 (`quay.io/keycloak/keycloak:26.3`). Keycloak has no LTS
-release and only the newest minor gets security fixes, so treat this as a
-starting point and track the current release for anything real. Standard Token
-Exchange V2 (used here) is enabled by default from Keycloak 26.2 onward.
-
-This is a teaching demo. It cuts corners that a production deployment must not:
-see `docs/NOT-FOR-PRODUCTION.md`.
+See `docs/RUNNING.md` for the full bring-up walkthrough.

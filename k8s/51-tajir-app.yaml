@@ -1,0 +1,31 @@
+# tajir-app: Tajir React SPA. Serves the Tajir business services platform UI.
+# Replaces the old login-web plain JS app.
+apiVersion: v1
+kind: Service
+metadata:
+  name: tajir-app
+  namespace: keycloak-demo
+spec:
+  selector: { app: tajir-app }
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tajir-app
+  namespace: keycloak-demo
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: tajir-app } }
+  template:
+    metadata:
+      labels: { app: tajir-app }
+    spec:
+      containers:
+        - name: tajir-app
+          image: tajir-app:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80

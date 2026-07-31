@@ -1,26 +1,25 @@
-# Convenience targets for the demo. See docs/RUNNING.md for the full walkthrough.
+# Convenience targets for the Tajir demo. See docs/RUNNING.md for the full walkthrough.
 NS = keycloak-demo
 
-.PHONY: images realm apply up logs-recs down cluster all
+.PHONY: images realm apply up logs down cluster all
 
 # One-time cluster bootstrap.
 cluster:
 	minikube start --memory=4096 --cpus=2
 	minikube addons enable ingress
-	@echo "Patching CoreDNS for demo hostnames (keycloak|app|music.demo.local)..."
+	@echo "Patching CoreDNS for demo hostnames (keycloak|app|api|admin.demo.local)..."
 	@MINIKUBE_IP=$$(minikube ip); \
 	kubectl -n kube-system get configmap coredns -o yaml | \
-	  sed "s/192.168.65.254 host.minikube.internal/192.168.65.254 host.minikube.internal\\n           $$MINIKUBE_IP keycloak.demo.local app.demo.local music.demo.local/" | \
+	  sed "s/192.168.65.254 host.minikube.internal/192.168.65.254 host.minikube.internal\\n           $$MINIKUBE_IP keycloak.demo.local app.demo.local api.demo.local admin.demo.local/" | \
 	  kubectl apply -f -
 	@kubectl -n kube-system rollout restart deploy/coredns >/dev/null
 	@kubectl -n kube-system rollout status deploy/coredns
 
 images:
 	eval $$(minikube docker-env) && \
-	docker build -t music-service:demo ./music-service && \
-	docker build -t recommendation-service:demo ./recommendation-service && \
-	docker build -t login-web:demo ./login-web && \
-	docker build -t login-mobile:demo ./login-mobile
+	docker build -t dashboard-service:demo ./dashboard-service && \
+	docker build -t admin-service:demo ./admin-service && \
+	docker build -t tajir-app:demo ./tajir-app
 
 realm:
 	kubectl create namespace $(NS) --dry-run=client -o yaml | kubectl apply -f -
@@ -38,8 +37,8 @@ up: images realm apply
 # Everything from scratch (cluster + up).
 all: cluster up
 
-logs-recs:
-	kubectl -n $(NS) logs deploy/recommendation-service -f
+logs:
+	kubectl -n $(NS) logs deploy/dashboard-service -f
 
 down:
 	kubectl delete namespace $(NS) --ignore-not-found

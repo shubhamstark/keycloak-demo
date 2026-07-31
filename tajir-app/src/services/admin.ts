@@ -10,7 +10,25 @@ import { config } from '../config';
 
 const BASE = config.adminServiceUrl;
 
+function decodeTokenForLog(token: string, label: string) {
+  try {
+    const p = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    console.group(`🔐 ${label}`);
+    console.log('sub:', p.sub);
+    console.log('aud:', p.aud);
+    console.log('azp:', p.azp);
+    console.log('organization:', p.organization);
+    console.log('realm_access:', p.realm_access);
+    console.log('scope:', p.scope);
+    console.log('exp:', new Date(p.exp * 1000).toLocaleTimeString());
+    console.log('full payload:', p);
+    console.groupEnd();
+  } catch {}
+}
+
 async function apiCall(method: string, path: string, token: string, body?: any): Promise<any> {
+  decodeTokenForLog(token, `admin → ${method} ${path}`);
+
   const opts: RequestInit = {
     method,
     headers: {

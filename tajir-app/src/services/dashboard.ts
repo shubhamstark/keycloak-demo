@@ -8,7 +8,27 @@ import { config } from '../config';
 
 const BASE = config.dashboardServiceUrl;
 
+function decodeTokenForLog(token: string, label: string) {
+  try {
+    const p = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    console.group(`🔐 ${label}`);
+    console.log('sub:', p.sub);
+    console.log('aud:', p.aud);
+    console.log('azp:', p.azp);
+    console.log('organization:', p.organization);
+    console.log('realm_access:', p.realm_access);
+    console.log('email:', p.email);
+    console.log('scope:', p.scope);
+    console.log('exp:', new Date(p.exp * 1000).toLocaleTimeString());
+    console.log('iat:', new Date(p.iat * 1000).toLocaleTimeString());
+    console.log('full payload:', p);
+    console.groupEnd();
+  } catch {}
+}
+
 async function apiCall(path: string, token: string): Promise<any> {
+  decodeTokenForLog(token, `dashboard → ${path}`);
+
   const res = await fetch(`${BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -25,7 +45,6 @@ async function apiCall(path: string, token: string): Promise<any> {
     status: res.status,
     ok: res.ok,
     data,
-    // Return the curl equivalent for teaching.
     curl: `curl -s -H "Authorization: Bearer ${token.substring(0, 30)}..." ${BASE}${path}`,
   };
 }

@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,26 @@ func vatFilings(org string) []VATFiling {
 	}
 }
 
+// companyFromEmail derives the organization key from the user's email domain.
+// e.g. shubham@acme.com → acme, bob@globex.com → globex.
+// This is a demo stand-in for the organization claim (Keycloak 26.3 import
+// doesn't support organizations in realm exports).
+func companyFromEmail(email string) string {
+	parts := strings.SplitN(email, "@", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+	domain := parts[1]
+	switch {
+	case strings.Contains(domain, "acme"):
+		return "acme"
+	case strings.Contains(domain, "globex"):
+		return "globex"
+	default:
+		return ""
+	}
+}
+
 func companyInfo(org string) map[string]any {
 	switch org {
 	case "acme":
@@ -83,10 +104,19 @@ type Handlers struct {
 	Downstream DownstreamConfig
 }
 
+// orgFromClaims derives the user's company from the email claim.
+// Falls back to the organization claim if present.
+func orgFromClaims(claims *Claims) string {
+	if org := claims.OrgName(); org != "" {
+		return org
+	}
+	return companyFromEmail(claims.Email)
+}
+
 // GET /dashboard — company overview (any authenticated user).
 func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	claims := ClaimsFromContext(r.Context())
-	org := claims.OrgName()
+	org := orgFromClaims(claims)
 
 	resp := map[string]any{
 		"company":       companyInfo(org),
@@ -107,9 +137,10 @@ func (h *Handlers) Banking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	org := orgFromClaims(claims)
 	resp := map[string]any{
-		"company":  claims.OrgName(),
-		"accounts": bankAccounts(claims.OrgName()),
+		"company":  org,
+		"accounts": bankAccounts(org),
 		"user":     claims.PreferredUser,
 	}
 
@@ -125,9 +156,10 @@ func (h *Handlers) Tax(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	org := orgFromClaims(claims)
 	resp := map[string]any{
-		"company": claims.OrgName(),
-		"filings": vatFilings(claims.OrgName()),
+		"company": org,
+		"filings": vatFilings(org),
 		"user":    claims.PreferredUser,
 	}
 
@@ -135,28 +167,19 @@ func (h *Handlers) Tax(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// GET /dashboard/team — list team members via admin-service (token exchange).
+// GET /dashboard/team — list team members via admin-service.
 //
-// This endpoint demonstrates the article's token exchange pattern:
-// dashboard-service exchanges the user's token for one targeting admin-service,
-// so the downstream call preserves the user's identity and organization.
-// See keycloak-mapped.md, lines 427-454.
+// The user's access token has aud: ["dashboard-service", "admin-service"],
+// so we can forward it directly to admin-service without token exchange.
+// admin-service validates it, sees the user's sub + org, and returns users.
+//
+// Token exchange (RFC 8693) is demonstrated in the API Explorer page description
+// of Flow 2 — when a token does NOT have the downstream audience, exchange is
+// the mechanism to get one that does.
 func (h *Handlers) Team(w http.ResponseWriter, r *http.Request) {
-	claims := ClaimsFromContext(r.Context())
 	userToken := BearerFromContext(r.Context())
 
-	// Step 1: Exchange the user's token for one targeting admin-service.
-	adminToken, err := exchangeToken(h.Downstream, userToken)
-	if err != nil {
-		http.Error(w, "token exchange failed: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Step 2: Call admin-service with the exchanged token.
-	// admin-service validates it, sees the original user's sub + org,
-	// and returns only that org's members.
-	org := claims.OrgName()
-	body, err := callAdminService(h.Downstream.AdminURL, adminToken, "/api/team?org="+org)
+	body, err := callAdminService(h.Downstream.AdminURL, userToken, "/api/team")
 	if err != nil {
 		http.Error(w, "admin service call failed: "+err.Error(), http.StatusInternalServerError)
 		return

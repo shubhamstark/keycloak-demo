@@ -36,9 +36,7 @@ type Claims struct {
 	PreferredUser   string `json:"preferred_username"`
 	Email           string `json:"email"`
 	RealmAccess     []string `json:"realm_access"`
-	Organization map[string]struct {
-		ID string `json:"id"`
-	} `json:"organization"`
+	Organization []string `json:"organization"`
 }
 
 type Validator struct {
@@ -112,8 +110,8 @@ func (c *Claims) HasRole(role string) bool {
 }
 
 func (c *Claims) OrgName() string {
-	for name := range c.Organization {
-		return name
+	if len(c.Organization) > 0 {
+		return c.Organization[0]
 	}
 	return ""
 }

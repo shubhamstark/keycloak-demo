@@ -15,9 +15,13 @@ import RoleBadge from '../../components/RoleBadge';
 export default function UsersOrgs() {
   const { accessToken, user } = useAuth();
   const claims = user?.profile ?? ({} as Record<string, any>);
-  const roles: string[] = claims.realm_access?.roles ?? [];
-  const orgName = claims.organization ? Object.keys(claims.organization)[0] : '';
+  const roles: string[] = Array.isArray(claims.realm_access) ? claims.realm_access : (claims.realm_access?.roles ?? []);
   const isAdmin = roles.includes('company-admin');
+
+  // Derive company from email domain (same logic as Go's companyFromEmail).
+  const email: string = claims.email || '';
+  const orgName = email.endsWith('@acme.com') ? 'acme' : email.endsWith('@globex.com') ? 'globex' : '';
+  const orgDisplay = orgName === 'acme' ? 'Acme Corp' : orgName === 'globex' ? 'Globex Industries' : 'Unknown';
 
   const [team, setTeam] = useState<any[]>([]);
   const [realmRoles, setRealmRoles] = useState<any[]>([]);
@@ -117,7 +121,7 @@ export default function UsersOrgs() {
           fontSize: 13,
           fontWeight: 600,
         }}>
-          🏢 {orgName || 'Not in an organization'}
+          🏢 {orgDisplay}
         </span>
       </div>
 
@@ -138,7 +142,7 @@ export default function UsersOrgs() {
             <button onClick={handleInvite} style={btnStyle}>Invite</button>
           </div>
           <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
-            The new user will be automatically added to {orgName}.
+            New users are created in the realm. Assign roles after creation.
           </p>
         </div>
       )}

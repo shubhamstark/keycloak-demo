@@ -43,7 +43,7 @@ func (h *Handlers) GetTeam(w http.ResponseWriter, r *http.Request) {
 // Users
 // ---------------------------------------------------------------------------
 
-// POST /api/users — create a user and add them to the caller's organization.
+// POST /api/users — create a user.
 func (h *Handlers) CreateUser(w http.ResponseWriter, r *http.Request) {
 	claims := ClaimsFromContext(r.Context())
 	if !claims.HasRole("company-admin") {
@@ -55,17 +55,14 @@ func (h *Handlers) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
-		OrgName  string `json:"orgName"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Tenant boundary: can only create users in your own org.
-	callerOrg := claims.OrgName()
-	if req.OrgName != "" && !strings.EqualFold(req.OrgName, callerOrg) {
-		http.Error(w, "forbidden: can only create users in your own organization", http.StatusForbidden)
+	if req.Username == "" || req.Password == "" {
+		http.Error(w, "username and password are required", http.StatusBadRequest)
 		return
 	}
 
@@ -86,28 +83,7 @@ func (h *Handlers) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Add to the caller's organization.
-	orgs, err := h.Admin.GetOrganizations()
-	if err != nil {
-		log.Printf("get orgs failed: %v", err)
-		http.Error(w, "user created but org assignment failed: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	for _, org := range orgs {
-		if name, ok := org["name"].(string); ok && strings.EqualFold(name, callerOrg) {
-			if id, ok := org["id"].(string); ok {
-				if err := h.Admin.AddOrganizationMember(id, userID); err != nil {
-					log.Printf("add org member failed: %v", err)
-					http.Error(w, "user created but org assignment failed: "+err.Error(), http.StatusInternalServerError)
-					return
-				}
-				break
-			}
-		}
-	}
-
-	writeJSON(w, map[string]any{"id": userID, "username": req.Username, "organization": callerOrg})
+	writeJSON(w, map[string]any{"id": userID, "username": req.Username})
 }
 
 // ---------------------------------------------------------------------------

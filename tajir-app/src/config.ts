@@ -21,5 +21,5 @@ export const config = {
   // - dashboard-audience: adds aud=dashboard-service to the access token
   // - offline_access: enables refresh tokens (token-based auth, no sessions)
   // - organization: adds the organization claim (tenant identity)
-  scope: 'openid profile email dashboard-audience',
+  scope: 'openid profile email dashboard-audience admin-audience organization',
 };

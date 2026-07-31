@@ -36,9 +36,7 @@ type Claims struct {
 	ResourceAccess map[string]struct {
 		Roles []string `json:"roles"`
 	} `json:"resource_access"`
-	Organization map[string]struct {
-		ID string `json:"id"`
-	} `json:"organization"`
+	Organization []string `json:"organization"`
 }
 
 // Validator wraps go-oidc. The underlying verifier fetches and caches
@@ -121,8 +119,8 @@ func (c *Claims) HasRole(role string) bool {
 
 // OrgName returns the first organization name from the token, or empty string.
 func (c *Claims) OrgName() string {
-	for name := range c.Organization {
-		return name
+	if len(c.Organization) > 0 {
+		return c.Organization[0]
 	}
 	return ""
 }

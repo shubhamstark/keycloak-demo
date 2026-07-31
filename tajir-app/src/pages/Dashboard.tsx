@@ -12,8 +12,10 @@ import RoleBadge from '../components/RoleBadge';
 export default function Dashboard() {
   const { accessToken, user } = useAuth();
   const claims = user?.profile ?? ({} as Record<string, any>);
-  const roles: string[] = claims.realm_access?.roles ?? [];
-  const orgName = claims.organization ? Object.keys(claims.organization)[0] : '';
+  const roles: string[] = Array.isArray(claims.realm_access) ? claims.realm_access : (claims.realm_access?.roles ?? []);
+  const email: string = claims.email || '';
+  const orgName = email.endsWith('@acme.com') ? 'acme' : email.endsWith('@globex.com') ? 'globex' : '';
+  const orgDisplay = orgName === 'acme' ? 'Acme Corp' : orgName === 'globex' ? 'Globex Industries' : '';
   const displayName = claims.preferred_username || claims.name || claims.sub || 'User';
 
   const [dash, setDash] = useState<any>(null);
@@ -47,7 +49,7 @@ export default function Dashboard() {
           Welcome, {displayName}
         </h1>
         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {orgName && (
+          {orgDisplay && (
             <span style={{
               padding: '4px 14px',
               borderRadius: 8,
@@ -56,7 +58,7 @@ export default function Dashboard() {
               fontSize: 13,
               fontWeight: 600,
             }}>
-              🏢 {orgName}
+              🏢 {orgDisplay}
             </span>
           )}
           {roles.map(r => <RoleBadge key={r} role={r} />)}

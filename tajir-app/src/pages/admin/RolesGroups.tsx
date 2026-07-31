@@ -17,7 +17,7 @@ import RoleBadge from '../../components/RoleBadge';
 export default function RolesGroups() {
   const { accessToken, user } = useAuth();
   const claims = user?.profile ?? ({} as Record<string, any>);
-  const roles: string[] = claims.realm_access?.roles ?? [];
+  const roles: string[] = Array.isArray(claims.realm_access) ? claims.realm_access : (claims.realm_access?.roles ?? []);
   const isAdmin = roles.includes('company-admin');
 
   const [groups, setGroups] = useState<any[]>([]);

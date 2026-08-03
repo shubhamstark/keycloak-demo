@@ -6,3 +6,6 @@ admin-service/admin-service
 dashboard-service/dashboard-service
 tajir-app/dist/
 tajir-app/node_modules/
+
+# Java/Maven
+keycloak-spi/**/target/

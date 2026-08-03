@@ -1,4 +1,0 @@
-# Java ServiceLoader file — Keycloak scans this at startup to discover custom
-# authenticator factories. One fully-qualified class name per line.
-# See: https://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html
-com.tajir.auth.MockSmsAuthenticatorFactory

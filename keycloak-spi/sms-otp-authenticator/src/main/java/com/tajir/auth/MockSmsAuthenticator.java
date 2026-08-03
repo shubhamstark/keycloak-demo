@@ -107,13 +107,15 @@ public class MockSmsAuthenticator implements Authenticator {
     }
 
     /**
-     * Whether this authenticator requires the user to already be identified
-     * (i.e., set up in the current session). Returns false because this step
-     * comes after username/password, so the user is already known.
+     * Whether this authenticator requires the user to already be identified.
+     * Returns TRUE — the user must complete password authentication first.
+     * This ensures Mock SMS OTP runs AFTER username/password even if the
+     * flow editor places it earlier. Keycloak will skip this step until
+     * the user is known, run password first, then come back here.
      */
     @Override
     public boolean requiresUser() {
-        return false;
+        return true;
     }
 
     /**

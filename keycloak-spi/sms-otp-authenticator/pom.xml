@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mock SMS OTP Authenticator — a Keycloak SPI extension.
+
+  This is the concrete example of the article's "extension model" section
+  (keycloak-mapped.md, lines 541-558). Keycloak has no built-in SMS OTP,
+  so we write a custom Authenticator SPI that:
+    1. Generates a random 6-digit code
+    2. Shows it on the login page (mocking what would be an SMS send)
+    3. Validates the user's entry
+
+  Built with Maven. Depends only on keycloak-server-spi (provided at runtime).
+  The resulting JAR is mounted into Keycloak's /providers/ directory.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tajir</groupId>
+    <artifactId>sms-otp-authenticator</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Tajir Mock SMS OTP Authenticator</name>
+    <description>Mock SMS OTP SPI for the Tajir Keycloak demo</description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <keycloak.version>26.3.5</keycloak.version>
+    </properties>
+
+    <dependencies>
+        <!--
+          keycloak-server-spi is the SPI (Service Provider Interface) that all
+          custom authenticators implement. It provides Authenticator, AuthenticatorFactory,
+          FormAction, and the authentication flow model.
+          scoped=provided because Keycloak supplies it at runtime.
+        -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-server-spi</artifactId>
+            <version>${keycloak.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+          keycloak-services provides FormMessage, ValidationContext, and the
+          Jakarta REST/WS annotations needed to build authenticator UIs.
+          scoped=provided — Keycloak has these at runtime.
+        -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-services</artifactId>
+            <version>${keycloak.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Jakarta REST — used by Keycloak for form rendering. -->
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <version>3.1.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>sms-otp-authenticator</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
